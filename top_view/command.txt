@@ -1,0 +1,1 @@
+python seg_top_view_v1.py --weights "C:\Users\admin\Downloads\top_view.pt" --source "C:\Users\admin\Downloads\VIDEO-2026-03-11-11-46-51.mp4" --conf 0.60 --project D:\bhanu\tata_steel\top_view\top_view_ --name top_view_final
