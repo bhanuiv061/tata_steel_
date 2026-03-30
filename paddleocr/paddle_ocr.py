@@ -1571,7 +1571,6 @@ DEBUG_CROPS     = True
 STOP_REQUESTED  = False
 
 # ================= SIGNAL =================
-print("Signal initiated")
 def request_stop(sig=None, frame=None):
     global STOP_REQUESTED
     STOP_REQUESTED = True
@@ -1739,7 +1738,17 @@ def crossed_line(prev_side, curr_side, axis):
     return None
 
 
-def draw_ocr_panel(frame, ocr_results, ocr_candidates, ocr_done, names, OCR_CLASS_NAME):
+def draw_ocr_panel(
+    frame,
+    ocr_results,
+    ocr_candidates,
+    ocr_done,
+    names,
+    OCR_CLASS_NAME,
+    show_end_not_detected=False,
+    end_number="XXXXXXXXXXX",
+    end_status="Not Detected",
+):
     h, w = frame.shape[:2]
 
     FONT    = cv2.FONT_HERSHEY_SIMPLEX
@@ -1750,10 +1759,14 @@ def draw_ocr_panel(frame, ocr_results, ocr_candidates, ocr_done, names, OCR_CLAS
     PANEL_W = 280
 
     entries = [(tid, num) for tid, num in ocr_results.items()]
-    if not entries:
+    if not entries and not show_end_not_detected:
         return
 
-    PANEL_H = min(PAD_TOP + HDR_H + 4 + ROW_H * len(entries) + PAD_TOP, h)
+    rows = list(entries)
+    if show_end_not_detected:
+        rows.append((None, end_number))
+
+    PANEL_H = min(PAD_TOP + HDR_H + 4 + ROW_H * len(rows) + PAD_TOP, h)
     px = w - PANEL_W
 
     ov = frame.copy()
@@ -1767,7 +1780,7 @@ def draw_ocr_panel(frame, ocr_results, ocr_candidates, ocr_done, names, OCR_CLAS
     div_y = PAD_TOP + HDR_H + 2
     cv2.line(frame, (px + PAD_X, div_y), (w - PAD_X, div_y), (55, 55, 55), 1)
 
-    for idx, (tid, num) in enumerate(entries):
+    for idx, (tid, num) in enumerate(rows):
         ry = div_y + 6 + ROW_H * idx
         if ry + ROW_H > h:
             break
@@ -1779,13 +1792,41 @@ def draw_ocr_panel(frame, ocr_results, ocr_candidates, ocr_done, names, OCR_CLAS
 
         text_y = ry + 26
 
-        # Wagon number
-        cv2.putText(frame, num, (px + PAD_X, text_y),
-                    FONT, 0.52, (0, 255, 255), 1, cv2.LINE_AA)
+        is_end_row = show_end_not_detected and tid is None
 
-        # Detected label (closer now)
-        cv2.putText(frame, "Detected", (px + PANEL_W - 90, text_y),
-                    FONT, 0.45, (0, 200, 80), 1, cv2.LINE_AA)
+        # Wagon number
+        num_text = str(num) if num is not None else ""
+        if is_end_row:
+            num_color = (0, 0, 255)        # red
+            label_color = (0, 0, 255)      # red
+            label_text = end_status
+        else:
+            num_color = (0, 255, 255)      # yellow/cyan
+            label_color = (0, 200, 80)    # green-ish
+            label_text = "Detected"
+
+        cv2.putText(
+            frame,
+            num_text,
+            (px + PAD_X, text_y),
+            FONT,
+            0.52,
+            num_color,
+            1,
+            cv2.LINE_AA,
+        )
+
+        # Detected / Not Detected label
+        cv2.putText(
+            frame,
+            label_text,
+            (px + PANEL_W - 90, text_y),
+            FONT,
+            0.45,
+            label_color,
+            1,
+            cv2.LINE_AA,
+        )
 
     cv2.rectangle(frame, (px, 0), (w - 1, PANEL_H), (70, 70, 70), 1)
 
@@ -1985,6 +2026,7 @@ def run(weights, source, imgsz=640, conf_thres=0.25, iou_thres=0.45,
     frame_no  = 0
     line_pos  = None
     buffer_px = None
+    last_frame = None
 
     for data in tqdm(dataset):
 
@@ -1995,6 +2037,7 @@ def run(weights, source, imgsz=640, conf_thres=0.25, iou_thres=0.45,
         raw   = im0s[0] if isinstance(im0s, list) else im0s
         frame = raw.copy()
         frame_no += 1
+        last_frame = frame.copy()
 
         h, w = frame.shape[:2]
 
@@ -2178,6 +2221,23 @@ def run(weights, source, imgsz=640, conf_thres=0.25, iou_thres=0.45,
             break
 
     if vid_writer:
+        # Add a final "Not Detected" row to the CONFIRMED wagon panel.
+        if last_frame is not None:
+            final_frame = last_frame.copy()
+            draw_ocr_panel(
+                final_frame,
+                ocr_results,
+                ocr_candidates,
+                ocr_done,
+                names,
+                OCR_CLASS_NAME,
+                show_end_not_detected=True,
+                end_number="XXXXXXXXXXX",
+                end_status="Not Detected",
+            )
+            # # Hold for a bit longer so the end panel is visible.
+            # for _ in range(200):
+            #     vid_writer.write(final_frame)
         vid_writer.release()
     csv_file.close()
     cv2.destroyAllWindows()
