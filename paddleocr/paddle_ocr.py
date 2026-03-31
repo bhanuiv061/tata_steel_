@@ -1788,7 +1788,7 @@ def draw_ocr_panel(
         if idx % 2 == 0:
             ro = frame.copy()
             cv2.rectangle(ro, (px, ry), (w, ry + ROW_H), (30, 30, 30), -1)
-            cv2.addWeighted(ro, 0.35, frame, 0.40, 0, frame)
+            #cv2.addWeighted(ro, 0.35, frame, 0.40, 0, frame)
 
         text_y = ry + 26
 
@@ -1828,7 +1828,7 @@ def draw_ocr_panel(
             cv2.LINE_AA,
         )
 
-    cv2.rectangle(frame, (px, 0), (w - 1, PANEL_H), (70, 70, 70), 1)
+    cv2.rectangle(frame, (px, 0), (w - 1, PANEL_H), (70, 70, 70), 2)
 
 # ================= UTIL =================
 def get_class_color(cls):
@@ -1883,31 +1883,48 @@ def draw_count_hud(frame, count_out, class_order):
     PANEL_W  = COL_OUT + 60
     PANEL_H  = PAD_TOP + HDR_H + 4 + ROW_H * len(class_order) + PAD_TOP
 
-    ov = frame.copy()
-    cv2.rectangle(ov, (0, 0), (PANEL_W, PANEL_H), (15, 15, 15), -1)
-    cv2.addWeighted(ov, 0.72, frame, 0.28, 0, frame)
+    # ===== FIXED COLORS =====
+    BG_COLOR        = (20, 20, 20)      # dark background
+    ROW_ALT_COLOR   = (40, 40, 40)      # alternate row
+    HEADER_COLOR    = (200, 200, 200)   # header text
+    COUNT_COLOR     = (0, 200, 255)     # fixed count color
+    BORDER_COLOR    = (120, 120, 120)   # border
 
+    # ===== BACKGROUND =====
+    cv2.rectangle(frame, (0, 0), (PANEL_W, PANEL_H), BG_COLOR, -1)
+
+    # ===== HEADER =====
     hy = PAD_TOP + HDR_H - 2
-    cv2.putText(frame, "CLASS", (COL_NAME, hy), FONT, 0.46, (160,160,160), 1, cv2.LINE_AA)
-    cv2.putText(frame, "Count", (COL_OUT,  hy), FONT, 0.46, (160,160,160), 1, cv2.LINE_AA)
+    cv2.putText(frame, "CLASS", (COL_NAME, hy), FONT, 0.5, HEADER_COLOR, 1, cv2.LINE_AA)
+    cv2.putText(frame, "Count", (COL_OUT, hy), FONT, 0.5, HEADER_COLOR, 1, cv2.LINE_AA)
 
+    # ===== DIVIDER =====
     div_y = PAD_TOP + HDR_H + 2
-    cv2.line(frame, (PAD_X, div_y), (PANEL_W - PAD_X, div_y), (55, 55, 55), 1)
+    cv2.line(frame, (PAD_X, div_y), (PANEL_W - PAD_X, div_y), BORDER_COLOR, 2)
 
+    # ===== ROWS =====
     for idx, cls in enumerate(class_order):
         ry = div_y + 6 + ROW_H * idx + 18
-        cls_color = get_class_color(cls)
-        if idx % 2 == 0:
-            ro = frame.copy()
-            y0, y1 = div_y + 6 + ROW_H * idx, div_y + 6 + ROW_H * (idx + 1)
-            cv2.rectangle(ro, (0, y0), (PANEL_W, y1), (30, 30, 30), -1)
-            cv2.addWeighted(ro, 0.35, frame, 0.65, 0, frame)
-        cv2.putText(frame, cls,
-                    (COL_NAME, ry), FONT, 0.50, cls_color, 1, cv2.LINE_AA)
-        cv2.putText(frame, str(count_out.get(cls, 0)),
-                    (COL_OUT, ry), FONT, 0.52, (80, 150, 255), 1, cv2.LINE_AA)
 
-    cv2.rectangle(frame, (0, 0), (PANEL_W, PANEL_H), (70, 70, 70), 1)
+        # alternate row background (fixed color)
+        if idx % 2 == 0:
+            y0 = div_y + 6 + ROW_H * idx
+            y1 = div_y + 6 + ROW_H * (idx + 1)
+            cv2.rectangle(frame, (0, y0), (PANEL_W, y1), ROW_ALT_COLOR, -1)
+
+        # ✅ ONLY THIS IS RANDOM
+        cls_color = get_class_color(cls)
+
+        # class name (random color)
+        cv2.putText(frame, cls,
+                    (COL_NAME, ry), FONT, 0.55, cls_color, 1, cv2.LINE_AA)
+
+        # count (fixed color)
+        cv2.putText(frame, str(count_out.get(cls, 0)),
+                    (COL_OUT, ry), FONT, 0.55, COUNT_COLOR, 2, cv2.LINE_AA)
+
+    # ===== BORDER =====
+    cv2.rectangle(frame, (0, 0), (PANEL_W, PANEL_H), BORDER_COLOR, 2)
 
 
 def draw_wagon_label_inside_mask(frame, mask_bool, tracker_id,
@@ -1921,6 +1938,9 @@ def draw_wagon_label_inside_mask(frame, mask_bool, tracker_id,
 
     FONT = cv2.FONT_HERSHEY_SIMPLEX
     SO   = 1
+    ID_LABEL_THICK = 1
+    OCR_STATUS_THICK = 1
+    WAGON_NUMBER_THICK = 1
 
     # ================= WAGON LOGIC =================
     if cls_name == "wagon":
@@ -1936,8 +1956,8 @@ def draw_wagon_label_inside_mask(frame, mask_bool, tracker_id,
     tx = cx - tw // 2
     ty = (cy - 22) if wagon_number else ((cy - 10) if ocr_status else (cy + th // 2))
 
-    cv2.putText(frame, id_label, (tx+SO, ty+SO), FONT, 0.6, (0,0,0), 2, cv2.LINE_AA)
-    cv2.putText(frame, id_label, (tx,    ty),    FONT, 0.6, (255,255,255), 2, cv2.LINE_AA)
+    #cv2.putText(frame, id_label, (tx+SO, ty+SO), FONT, 0.6, (0,0,0), 2, cv2.LINE_AA)
+    #cv2.putText(frame, id_label, (tx,    ty),    FONT, 0.6, (255,255,255), 2, cv2.LINE_AA)
 
     if ocr_status and not wagon_number:
         (sw, sh), _ = cv2.getTextSize(ocr_status, FONT, 0.45, 1)
@@ -1951,20 +1971,20 @@ def draw_wagon_label_inside_mask(frame, mask_bool, tracker_id,
         cv2.putText(frame, wagon_number, (nx+SO, ny+SO), FONT, 0.65, (0,0,0), 2, cv2.LINE_AA)
         cv2.putText(frame, wagon_number, (nx,    ny),    FONT, 0.65, (0,255,255), 2, cv2.LINE_AA)
 
-    cv2.putText(frame, id_label, (tx+SO, ty+SO), FONT, 0.6, (0,0,0),      2, cv2.LINE_AA)
-    cv2.putText(frame, id_label, (tx,    ty),    FONT, 0.6, (255,255,255), 2, cv2.LINE_AA)
+    cv2.putText(frame, id_label, (tx+SO, ty+SO), FONT, 0.6, (0,0,0),      ID_LABEL_THICK, cv2.LINE_AA)
+    cv2.putText(frame, id_label, (tx,    ty),    FONT, 0.6, (255,255,255), ID_LABEL_THICK, cv2.LINE_AA)
 
     if ocr_status and not wagon_number:
         (sw, sh), _ = cv2.getTextSize(ocr_status, FONT, 0.45, 1)
         sx, sy = cx - sw // 2, ty + sh + 6
-        cv2.putText(frame, ocr_status, (sx+SO, sy+SO), FONT, 0.45, (0,0,0),    1, cv2.LINE_AA)
-        cv2.putText(frame, ocr_status, (sx,    sy),    FONT, 0.45, (0,220,255), 1, cv2.LINE_AA)
+        cv2.putText(frame, ocr_status, (sx+SO, sy+SO), FONT, 0.45, (0,0,0),    OCR_STATUS_THICK, cv2.LINE_AA)
+        cv2.putText(frame, ocr_status, (sx,    sy),    FONT, 0.45, (0,220,255), OCR_STATUS_THICK, cv2.LINE_AA)
 
     if wagon_number:
         (nw, nh), _ = cv2.getTextSize(wagon_number, FONT, 0.65, 2)
         nx, ny = cx - nw // 2, ty + nh + 8
-        cv2.putText(frame, wagon_number, (nx+SO, ny+SO), FONT, 0.65, (0,0,0),    2, cv2.LINE_AA)
-        cv2.putText(frame, wagon_number, (nx,    ny),    FONT, 0.65, (0,255,255), 2, cv2.LINE_AA)
+        cv2.putText(frame, wagon_number, (nx+SO, ny+SO), FONT, 0.65, (0,0,0), WAGON_NUMBER_THICK, cv2.LINE_AA)
+        cv2.putText(frame, wagon_number, (nx,    ny),    FONT, 0.65, (0,255,255), WAGON_NUMBER_THICK, cv2.LINE_AA)
 
 
 # ================= SAVE HELPERS =================
@@ -2199,10 +2219,10 @@ def run(weights, source, imgsz=640, conf_thres=0.25, iou_thres=0.45,
 
             # ❌ Skip mask for wagon
             if cls_name != "wagon":
-                frame[mask_bool] = frame[mask_bool] * 0.5 + np.array(color) * 0.5
+                frame[mask_bool] = np.array(color)   # solid color (optional)
 
             cv2.putText(frame, cls_name, (x1, max(y1 - 5, 10)),
-                        cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 1, cv2.LINE_AA)
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 2, cv2.LINE_AA)
 
             if cls_name != "wagon":
                 draw_wagon_label_inside_mask(
@@ -2233,11 +2253,11 @@ def run(weights, source, imgsz=640, conf_thres=0.25, iou_thres=0.45,
                 OCR_CLASS_NAME,
                 show_end_not_detected=True,
                 end_number="XXXXXXXXXXX",
-                end_status="Not Detected",
+                end_status = "Not_Detected\nadd manually",
             )
-            # # Hold for a bit longer so the end panel is visible.
-            # for _ in range(200):
-            #     vid_writer.write(final_frame)
+            # Hold for a bit longer so the end panel is visible.
+            for _ in range(200):
+                vid_writer.write(final_frame)
         vid_writer.release()
     csv_file.close()
     cv2.destroyAllWindows()
